@@ -2043,6 +2043,7 @@
           <h4>📋 Preencha seus dados para enviar o resultado</h4>
           <div class="form-grupo"><label>Nome Completo</label><input type="text" id="nomeAluno" placeholder="Digite seu nome completo"></div>
           <div class="form-grupo"><label>CPF</label><input type="text" id="cpfAluno" placeholder="000.000.000-00" maxlength="14" oninput="mascaraCPF(this)"></div>
+          <div class="form-grupo"><label>Empresa</label><input type="text" id="empresaAluno" placeholder="Nome da empresa onde trabalha"></div>
         </div>
         <button class="btn-whatsapp" onclick="enviarWhatsApp()">
           <span style="font-size:1.2rem">💬</span>
@@ -2606,10 +2607,12 @@ function mascaraCPF(input) {
 }
 
 function enviarWhatsApp() {
-  const nome = document.getElementById('nomeAluno').value.trim();
-  const cpf  = document.getElementById('cpfAluno').value.trim();
+  const nome    = document.getElementById('nomeAluno').value.trim();
+  const cpf     = document.getElementById('cpfAluno').value.trim();
+  const empresa = document.getElementById('empresaAluno').value.trim();
   if (!nome) { alert('Por favor, insira seu nome completo.'); return; }
   if (cpf.length < 14) { alert('Por favor, insira um CPF válido.'); return; }
+  if (!empresa) { alert('Por favor, insira o nome da sua empresa.'); return; }
   const pontos = quizRespostas.filter((r, i) => r === questoesEmbaralhadas[i].r).length;
   const pct = Math.round((pontos / questoes.length) * 100);
   const data = new Date().toLocaleDateString('pt-BR');
@@ -2619,7 +2622,7 @@ function enviarWhatsApp() {
     const resp = quizRespostas[i] !== null ? q.ops[quizRespostas[i]] : 'Não respondida';
     return `${acertou} Q${i+1}: ${resp}`;
   }).join('\n');
-  const msg = `📋 *RESULTADO DO QUIZ — SEGURANÇA CONTRA INCÊNDIO*\n\n👤 *Aluno:* ${nome}\n🪪 *CPF:* ${cpf}\n📅 *Data:* ${data} às ${hora}\n\n🎯 *PONTUAÇÃO: ${pontos}/${questoes.length} (${pct}%)*\n\n📊 *Detalhamento:*\n${detalhes}\n\n_Apostila Interativa — Combate a Incêndio & Primeiros Socorros_`;
+  const msg = `📋 *RESULTADO DO QUIZ — SEGURANÇA CONTRA INCÊNDIO*\n\n👤 *Aluno:* ${nome}\n🪪 *CPF:* ${cpf}\n🏢 *Empresa:* ${empresa}\n📅 *Data:* ${data} às ${hora}\n\n🎯 *PONTUAÇÃO: ${pontos}/${questoes.length} (${pct}%)*\n\n📊 *Detalhamento:*\n${detalhes}\n\n_Apostila Interativa — Combate a Incêndio & Primeiros Socorros_`;
   const numero = '5585984747435';
   window.open('https://wa.me/' + numero + '?text=' + encodeURIComponent(msg), '_blank');
 }
