@@ -539,6 +539,33 @@
     .pg-titulo h2 { font-size: 1.8rem; }
   }
 
+  /* ===== AVISO SENHA TEMPORÁRIA ===== */
+  .aviso-senha-temp {
+    background: linear-gradient(135deg, #FFF3CD, #FDEBD0);
+    border: 2px solid var(--laranja);
+    border-radius: 12px;
+    padding: 0.9rem 1.2rem;
+    margin-bottom: 1.4rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 0.82rem;
+    color: #7D4A00;
+    animation: fadeSlide 0.4s ease;
+  }
+  .aviso-senha-temp .aviso-icone { font-size: 1.3rem; flex-shrink: 0; margin-top: 1px; }
+  .aviso-senha-temp .aviso-texto strong { display: block; font-size: 0.86rem; margin-bottom: 2px; color: #5D3500; }
+  .aviso-senha-temp .aviso-tempo {
+    display: inline-block;
+    background: var(--laranja);
+    color: #fff;
+    border-radius: 6px;
+    padding: 1px 8px;
+    font-weight: 700;
+    font-size: 0.78rem;
+    margin-top: 4px;
+  }
+
   /* ===== TELA DE LOGIN ===== */
   #telaLogin {
     position: fixed; inset: 0; z-index: 9999;
@@ -2628,14 +2655,106 @@ function enviarWhatsApp() {
 }
 
 // ===== LOGIN =====
-// Cadastro de usuários: { usuario: senha }
-// Para adicionar alunos, inclua novas entradas neste objeto.
-const usuariosCadastrados = {
-  'aluno':   'combatfire',
-  'professor':   'profs@123',
+// Usuários permanentes — senhas nunca são resetadas
+const USUARIOS_PERMANENTES = ['professor', 'instrutor', 'demo'];
+
+// Senhas originais dos usuários permanentes (nunca expiram)
+const SENHAS_PERMANENTES = {
+  'professor': 'profs@123',
   'instrutor': 'admin@123',
   'demo':      '1234'
 };
+
+// Duração da senha temporária em milissegundos (120 horas)
+const DURACAO_SENHA_MS = 120 * 60 * 60 * 1000;
+
+// Gera uma senha aleatória de 10 caracteres
+function gerarSenhaAleatoria() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789@#$!';
+  let senha = '';
+  for (let i = 0; i < 10; i++) {
+    senha += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return senha;
+}
+
+// Retorna os dados do usuário salvo (senha + timestamp de criação)
+function getDadosUsuario(usuario) {
+  try {
+    const raw = localStorage.getItem('cfUser_' + usuario);
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+
+// Salva os dados do usuário
+function setDadosUsuario(usuario, senha) {
+  const dados = { senha: senha, criadoEm: Date.now() };
+  localStorage.setItem('cfUser_' + usuario, JSON.stringify(dados));
+  return dados;
+}
+
+// Retorna a senha válida atual de um usuário (reseta se expirada)
+function getSenhaAtual(usuario) {
+  // Usuários permanentes: senha fixa
+  if (USUARIOS_PERMANENTES.includes(usuario)) {
+    return { senha: SENHAS_PERMANENTES[usuario], permanente: true };
+  }
+
+  const dados = getDadosUsuario(usuario);
+  const agora = Date.now();
+
+  // Se não existe ou expirou, gera nova senha
+  if (!dados || (agora - dados.criadoEm) >= DURACAO_SENHA_MS) {
+    const novaSenha = gerarSenhaAleatoria();
+    const novosDados = setDadosUsuario(usuario, novaSenha);
+    return { senha: novaSenha, criadoEm: novosDados.criadoEm, renovada: true };
+  }
+
+  return { senha: dados.senha, criadoEm: dados.criadoEm, renovada: false };
+}
+
+// Inicializa os alunos cadastrados (primeira vez)
+function inicializarUsuarios() {
+  const alunosIniciais = { 'aluno': 'combatfire' };
+  for (const [usuario, senhaOriginal] of Object.entries(alunosIniciais)) {
+    if (!getDadosUsuario(usuario)) {
+      setDadosUsuario(usuario, senhaOriginal);
+    }
+  }
+}
+
+// Formata tempo restante em horas e minutos
+function formatarTempoRestante(criadoEm) {
+  const restanteMs = DURACAO_SENHA_MS - (Date.now() - criadoEm);
+  if (restanteMs <= 0) return '0h 0min';
+  const horas = Math.floor(restanteMs / (60 * 60 * 1000));
+  const minutos = Math.floor((restanteMs % (60 * 60 * 1000)) / 60000);
+  return horas + 'h ' + minutos + 'min';
+}
+
+// Exibe o aviso de senha temporária após o login
+function exibirAvisoSenhaTemp(criadoEm) {
+  // Remove aviso anterior se existir
+  const antigoAviso = document.getElementById('avisoSenhaTemp');
+  if (antigoAviso) antigoAviso.remove();
+
+  const tempo = formatarTempoRestante(criadoEm);
+  const aviso = document.createElement('div');
+  aviso.id = 'avisoSenhaTemp';
+  aviso.className = 'aviso-senha-temp';
+  aviso.innerHTML = `
+    <div class="aviso-icone">⏳</div>
+    <div class="aviso-texto">
+      <strong>Acesso com senha temporária</strong>
+      Sua senha atual é válida por 120 horas. Após esse período, uma nova senha aleatória será gerada automaticamente e você precisará obtê-la com o administrador do sistema.
+      <br><span class="aviso-tempo">Expira em: ${tempo}</span>
+    </div>
+  `;
+
+  // Insere o aviso no topo do main, antes da primeira página
+  const main = document.querySelector('.main');
+  if (main) main.insertBefore(aviso, main.firstChild);
+}
 
 function fazerLogin() {
   const usuario = document.getElementById('loginUsuario').value.trim().toLowerCase();
@@ -2661,40 +2780,70 @@ function fazerLogin() {
   btn.innerHTML = '<span>⏳</span> Verificando...';
 
   setTimeout(() => {
-    if (usuariosCadastrados[usuario] && usuariosCadastrados[usuario] === senha) {
-      // Sucesso
-      const nome = usuario.charAt(0).toUpperCase() + usuario.slice(1);
-      document.getElementById('navNomeUsuario').textContent = nome;
-      document.getElementById('navAvatar').textContent = nome.charAt(0).toUpperCase();
-      sessionStorage.setItem('cfUsuario', nome);
-
-      document.getElementById('telaLogin').classList.add('oculto');
-      btn.disabled = false;
-      btn.innerHTML = '<span>🔓</span> Entrar no Portal';
+    // Verifica usuários permanentes
+    if (USUARIOS_PERMANENTES.includes(usuario)) {
+      if (SENHAS_PERMANENTES[usuario] === senha) {
+        concluirLogin(usuario, false, null);
+        btn.disabled = false;
+        btn.innerHTML = '<span>🔓</span> Entrar no Portal';
+        return;
+      }
     } else {
-      // Falha
-      erroMsg.textContent = '❌ Usuário ou senha incorretos. Tente novamente.';
-      erroMsg.classList.add('visivel');
-      document.getElementById('loginUsuario').classList.add('erro');
-      document.getElementById('loginSenha').classList.add('erro');
-      document.getElementById('loginSenha').value = '';
-      card.classList.remove('shake');
-      void card.offsetWidth;
-      card.classList.add('shake');
-      btn.disabled = false;
-      btn.innerHTML = '<span>🔓</span> Entrar no Portal';
+      // Usuário temporário: obtém senha atual (pode ter sido resetada)
+      const dadosSenha = getSenhaAtual(usuario);
+      if (dadosSenha && dadosSenha.senha === senha) {
+        concluirLogin(usuario, true, dadosSenha.criadoEm);
+        btn.disabled = false;
+        btn.innerHTML = '<span>🔓</span> Entrar no Portal';
+        return;
+      }
     }
+
+    // Falha no login
+    erroMsg.textContent = '❌ Usuário ou senha incorretos. Tente novamente.';
+    erroMsg.classList.add('visivel');
+    document.getElementById('loginUsuario').classList.add('erro');
+    document.getElementById('loginSenha').classList.add('erro');
+    document.getElementById('loginSenha').value = '';
+    card.classList.remove('shake');
+    void card.offsetWidth;
+    card.classList.add('shake');
+    btn.disabled = false;
+    btn.innerHTML = '<span>🔓</span> Entrar no Portal';
   }, 700);
+}
+
+function concluirLogin(usuario, senhaTemporaria, criadoEm) {
+  const nome = usuario.charAt(0).toUpperCase() + usuario.slice(1);
+  document.getElementById('navNomeUsuario').textContent = nome;
+  document.getElementById('navAvatar').textContent = nome.charAt(0).toUpperCase();
+  sessionStorage.setItem('cfUsuario', nome);
+  sessionStorage.setItem('cfUsuarioKey', usuario);
+  sessionStorage.setItem('cfSenhaTemp', senhaTemporaria ? '1' : '0');
+  if (criadoEm) sessionStorage.setItem('cfSenhaCriadaEm', criadoEm);
+
+  document.getElementById('telaLogin').classList.add('oculto');
+
+  // Exibe aviso apenas para usuários com senha temporária
+  if (senhaTemporaria && criadoEm) {
+    exibirAvisoSenhaTemp(criadoEm);
+  }
 }
 
 function fazerLogout() {
   sessionStorage.removeItem('cfUsuario');
+  sessionStorage.removeItem('cfUsuarioKey');
+  sessionStorage.removeItem('cfSenhaTemp');
+  sessionStorage.removeItem('cfSenhaCriadaEm');
   document.getElementById('loginUsuario').value = '';
   document.getElementById('loginSenha').value = '';
   document.getElementById('loginErroMsg').classList.remove('visivel');
   document.getElementById('loginUsuario').classList.remove('erro');
   document.getElementById('loginSenha').classList.remove('erro');
   document.getElementById('telaLogin').classList.remove('oculto');
+  // Remove aviso se existir
+  const aviso = document.getElementById('avisoSenhaTemp');
+  if (aviso) aviso.remove();
 }
 
 // Permitir login com Enter
@@ -2707,6 +2856,7 @@ document.addEventListener('keydown', function(e) {
 
 // ===== INICIALIZAÇÃO =====
 document.addEventListener('DOMContentLoaded', function() {
+  inicializarUsuarios();
   criarChecklist();
   criarGlossario();
   initRCPDots();
@@ -2718,6 +2868,13 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('navNomeUsuario').textContent = sessao;
     document.getElementById('navAvatar').textContent = sessao.charAt(0).toUpperCase();
     document.getElementById('telaLogin').classList.add('oculto');
+
+    // Restaurar aviso de senha temporária se aplicável
+    const senhaTemp = sessionStorage.getItem('cfSenhaTemp');
+    const criadoEm  = sessionStorage.getItem('cfSenhaCriadaEm');
+    if (senhaTemp === '1' && criadoEm) {
+      exibirAvisoSenhaTemp(parseInt(criadoEm));
+    }
   }
 });
 </script>
