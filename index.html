@@ -2809,8 +2809,8 @@ const SENHAS_PERMANENTES = {
   'demo':      '1234'
 };
 
-// Duração da senha temporária em milissegundos (120 horas)
-const DURACAO_SENHA_MS = 120 * 60 * 60 * 1000;
+// Duração da senha temporária em milissegundos (72 horas)
+const DURACAO_SENHA_MS = 72 * 60 * 60 * 1000;
 
 // Gera uma senha aleatória de 10 caracteres
 function gerarSenhaAleatoria() {
@@ -2888,7 +2888,7 @@ function exibirAvisoSenhaTemp(criadoEm) {
     <div class="aviso-icone">⏳</div>
     <div class="aviso-texto">
       <strong>Acesso com senha temporária</strong>
-      Sua senha atual é válida por 120 horas. Após esse período, uma nova senha aleatória será gerada automaticamente e você precisará obtê-la com o administrador do sistema.
+      Sua senha atual é válida por 72 horas. Após esse período, uma nova senha aleatória será gerada automaticamente e você precisará obtê-la com o administrador do sistema.
       <br><span class="aviso-tempo">Expira em: ${tempo}</span>
     </div>
   `;
@@ -2938,7 +2938,7 @@ function fazerLogin() {
           // Senha expirou: gera nova automaticamente e rejeita o login atual
           const novaSenha = gerarSenhaAleatoria();
           setDadosUsuario(usuario, novaSenha);
-          erroMsg.textContent = '⏳ Sua senha expirou após 120 horas. Uma nova senha foi gerada. Solicite ao administrador.';
+          erroMsg.textContent = '⏳ Sua senha expirou após 72 horas. Uma nova senha foi gerada. Solicite ao administrador.';
           erroMsg.classList.add('visivel');
           document.getElementById('loginSenha').classList.add('erro');
           document.getElementById('loginSenha').value = '';
@@ -3355,7 +3355,7 @@ setInterval(() => {
             onkeydown="if(event.key==='Enter')adminAdicionarUsuario()">
           <button class="admin-btn admin-btn-add" onclick="adminAdicionarUsuario()">Criar usuário</button>
         </div>
-        <div style="font-size:0.72rem;color:#888;margin-top:6px">Senha aleatória gerada automaticamente · Válida por 120 horas</div>
+        <div style="font-size:0.72rem;color:#888;margin-top:6px">Senha aleatória gerada automaticamente · Válida por 72 horas</div>
       </div>
       <div class="admin-tabela-wrap">
         <table class="admin-tabela">
